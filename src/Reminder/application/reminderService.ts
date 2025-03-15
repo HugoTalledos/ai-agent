@@ -1,8 +1,12 @@
 import { Reminder } from "../domain/reminder";
 import { ReminderDate } from "../domain/ReminderDate";
-import { ReminderNotFound } from "../domain/ReminderErrors";
+import { ReminderExeeded, ReminderNotFound } from "../domain/ReminderErrors";
 import { ReminderRepository } from "../domain/reminderRepository";
 
+
+/**
+ * Por lo que estoy entendiendo aca debería ir logica mas compleja como validaciones antes de guardar y asi
+ */
 export class ReminderService {
     reminderRepository: ReminderRepository
 
@@ -11,14 +15,21 @@ export class ReminderService {
         this.reminderRepository = reminderRepository
     }
 
-    createReminder(
+    async createReminder(
         id: string,
         name: string,
         detail:string,
         date: Date,
-        priority: number
+        priority: number,
+        userId: string,
     ): Promise<void> {
-        const reminder = new Reminder(id, name, detail, new ReminderDate(date), priority)
+        const userReminders = await this.reminderRepository.getAllByUserId(userId);
+
+        if(Reminder.canCreateMoreReminders(userReminders)) {
+            throw new ReminderExeeded('Has alcanzado el maximo de recordatorios')
+        }
+
+        const reminder = new Reminder(id, name, detail, new ReminderDate(date), priority, userId)
         return this.reminderRepository.create(reminder)
     }
 
@@ -27,9 +38,10 @@ export class ReminderService {
         name: string,
         detail:string,
         date: Date,
-        priority: number
+        priority: number,
+        userId: string
     ): Promise<void> {
-        const reminder = new Reminder(id, name, detail, new ReminderDate(date), priority)
+        const reminder = new Reminder(id, name, detail, new ReminderDate(date), priority, userId)
         return this.reminderRepository.update(reminder)
     }
 
